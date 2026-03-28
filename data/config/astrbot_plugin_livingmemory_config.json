@@ -1,0 +1,64 @@
+﻿{
+  "provider_settings": {
+    "embedding_provider_id": "openrouter",
+    "llm_provider_id": "火山方舟/doubao-seed-2-0-pro-260215"
+  },
+  "webui_settings": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8888,
+    "access_password": "683045rena",
+    "session_timeout": 3600
+  },
+  "session_manager": {
+    "max_sessions": 100,
+    "session_ttl": 3600,
+    "context_window_size": 50
+  },
+  "recall_engine": {
+    "top_k": 5,
+    "importance_weight": 1.0,
+    "fallback_to_vector": true,
+    "injection_method": "user_message_before",
+    "auto_remove_injected": true
+  },
+  "importance_decay": {
+    "decay_rate": 0.01
+  },
+  "fusion_strategy": {
+    "rrf_k": 60
+  },
+  "filtering_settings": {
+    "use_persona_filtering": true,
+    "use_session_filtering": false
+  },
+  "reflection_engine": {
+    "summary_trigger_rounds": 10,
+    "save_original_conversation": false
+  },
+  "migration_settings": {
+    "auto_migrate": true,
+    "create_backup": true
+  },
+  "backup_settings": {
+    "enabled": false,
+    "keep_days": 7
+  },
+  "forgetting_agent": {
+    "auto_cleanup_enabled": true,
+    "cleanup_days_threshold": 30,
+    "cleanup_importance_threshold": 0.2
+  },
+  "sparse_retriever": {
+    "enabled": true,
+    "bm25_k1": 1.2,
+    "bm25_b": 0.75,
+    "use_chinese_tokenizer": true,
+    "enable_stopwords_filtering": true,
+    "stopwords_source": "hit",
+    "custom_stopwords": ""
+  },
+  "dense_retriever": {
+    "enable_query_preprocessing": true
+  }
+}
