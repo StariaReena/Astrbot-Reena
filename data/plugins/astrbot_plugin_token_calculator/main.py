@@ -4,6 +4,8 @@ from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.core.message.components import Plain
+from astrbot.core.message.message_event_result import ResultContentType, MessageChain
+
 from astrbot.core.provider.entites import ProviderRequest, LLMResponse
 
 
@@ -44,8 +46,15 @@ class TokenCalculator(Star):
                 prompt_tokens=usage.prompt_tokens
                 total_tokens=usage.total_tokens
                 self.tokenMsg=f"(completion_tokens:{completion_tokens},prompt_tokens:{prompt_tokens},token总消耗:{total_tokens})"
-                self.llmResponsed=True
+                
+                result = event.get_result()
+                if result and result.result_content_type in [ResultContentType.STREAMING_RESULT, ResultContentType.STREAMING_FINISH]:
+                    # 流式输出时，越过 pipeline 装饰阶段直接发送
+                    await event.send(MessageChain([Plain(self.tokenMsg)]))
+                else:
+                    self.llmResponsed=True
             except:
+
                 self.tokenMsg = "(TokenCalculator插件无法获取信息或者出现未知错误)"
 
 
