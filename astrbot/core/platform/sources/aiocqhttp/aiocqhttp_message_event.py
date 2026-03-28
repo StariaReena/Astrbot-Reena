@@ -207,14 +207,15 @@ class AiocqhttpMessageEvent(AstrMessageEvent):
                 for comp in chain.chain:
                     if isinstance(comp, Plain):
                         buffer += comp.text
-                        if any(p in buffer for p in "。？！~…"):
-                            buffer = await self.process_buffer(buffer, pattern)
                     else:
+                        # 遇到非文本组件，直接发送
                         await self.send(MessageChain(chain=[comp]))
                         await asyncio.sleep(1.5)  # 限速
 
         if buffer.strip():
-            await self.send(MessageChain([Plain(buffer)]))
+            # 流式传输结束，统一进行分段处理
+            await self.process_buffer(buffer, pattern)
+            
         return await super().send_streaming(generator, use_fallback)
 
     async def get_group(self, group_id=None, **kwargs):
