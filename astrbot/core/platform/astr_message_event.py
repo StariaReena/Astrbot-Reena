@@ -242,14 +242,58 @@ class AstrMessageEvent(abc.ABC):
 
     async def process_buffer(self, buffer: str, pattern: re.Pattern) -> str:
         """将消息缓冲区中的文本按指定正则表达式分割后发送至消息平台，作为不支持流式输出平台的Fallback。"""
-        while True:
+        segments = []
+        while buffer:
             match = re.search(pattern, buffer)
             if not match:
                 break
-            matched_text = match.group()
-            await self.send(MessageChain([Plain(matched_text)]))
+            
+            # 1. 稳定性：防止 match 为空字符串造成的无限循环
+            if match.end() == 0:
+                segments.append(buffer[:1])
+                buffer = buffer[1:]
+                continue
+            
+            # 保留不 match 的残留部分（提取到 match_end 的所有内容，包含 start 之前的内容）
+            matched_text = buffer[:match.end()]
+            segments.append(matched_text)
             buffer = buffer[match.end() :]
-            await asyncio.sleep(1.5)  # 限速
+            
+        # 2. 如果分段数大于等于4，则进入合并分段的循环
+        while len(segments) >= 4:
+            min_length = float('inf')
+            best_pair_idx = -1
+            
+            for i in range(len(segments) - 1):
+                seg_a = segments[i]
+                seg_b = segments[i+1]
+                
+                # 合并条件：A和B相邻，且上面分段尾部和下面分段头部没有换行符
+                if not seg_a.endswith('\n') and not seg_b.startswith('\n'):
+                    combined_len = len(seg_a) + len(seg_b)
+                    if combined_len < min_length:
+                        min_length = combined_len
+                        best_pair_idx = i
+                        
+            if best_pair_idx != -1:
+                # 合并最短的可合并分段对
+                segments[best_pair_idx] = segments[best_pair_idx] + segments[best_pair_idx+1]
+                del segments[best_pair_idx+1]
+                
+                # 直到总分段数小于等于4
+                if len(segments) <= 4:
+                    break
+            else:
+                # 没有可以合并的分段
+                break
+                
+        # 3. 分段发送前裁剪首位的空字符
+        for seg in segments:
+            seg = seg.strip()
+            if seg:
+                await self.send(MessageChain([Plain(seg)]))
+                await asyncio.sleep(1.5)  # 限速
+                
         return buffer
 
     async def send_streaming(
