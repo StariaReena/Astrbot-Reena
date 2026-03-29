@@ -273,7 +273,7 @@ class AstrMessageEvent(abc.ABC):
                 # 合并条件：A和B相邻，且上面分段尾部和下面分段头部没有换行符
                 if not seg_a.endswith('\n') and not seg_b.startswith('\n'):
                     combined_len = len(seg_a) + len(seg_b)
-                    if combined_len <= 100 and combined_len < min_length:
+                    if combined_len <= 250 and combined_len < min_length:
                         min_length = combined_len
                         best_pair_idx = i
                         
