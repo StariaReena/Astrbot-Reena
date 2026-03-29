@@ -80,20 +80,9 @@ class TokenCalculator(Star):
                     logger.info(f"[TokenCalculator] 未在响应中找到有效的 Token 使用信息。")
                 self.tokenMsg = "(无法获取Token用量信息，可能是当前provider不支持)"
 
-            result = event.get_result()
-            res_type = result.result_content_type if result else "None"
+            self.llmResponsed = True
             if self.debugMode:
-                logger.info(f"[TokenCalculator] 当前 Result 类型: {res_type}")
-
-            if result and result.result_content_type in [ResultContentType.STREAMING_RESULT, ResultContentType.STREAMING_FINISH]:
-                if self.debugMode:
-                    logger.info(f"[TokenCalculator] 流式模式：等待 8s 后直接发送 Token 信息。")
-                await asyncio.sleep(8)
-                await event.send(MessageChain([Plain(self.tokenMsg)]))
-            else:
-                if self.debugMode:
-                    logger.info(f"[TokenCalculator] 非流式模式：标记等待装饰。")
-                self.llmResponsed=True
+                logger.info(f"[TokenCalculator] 已记录 Token 信息，等待后续处理。")
 
         except Exception as e:
             logger.error(f"[TokenCalculator] 出现错误: {e}", exc_info=True)
@@ -102,14 +91,30 @@ class TokenCalculator(Star):
 
     @filter.on_decorating_result()
     async def on_decorating_result(self, event: AstrMessageEvent):
-        if self.cacuToken and self.llmResponsed:
-            if self.debugMode:
-                logger.info(f"[TokenCalculator] on_decorating_result triggered. Appending: {self.tokenMsg}")
-            try:
-                result = event.get_result()
+        if not (self.cacuToken and self.llmResponsed):
+            return
+            
+        if self.debugMode:
+            logger.info(f"[TokenCalculator] on_decorating_result triggered. 准备处理 Token 信息")
+            
+        try:
+            result = event.get_result()
+            res_type = result.result_content_type if result else "None"
+            
+            if result and result.result_content_type == ResultContentType.STREAMING_FINISH:
+                if self.debugMode:
+                    logger.info(f"[TokenCalculator] 检测到流式结束 (STREAMING_FINISH)，等待 2s 后发送 Token 信息。")
+                await asyncio.sleep(2)
+                await event.send(MessageChain([Plain(self.tokenMsg)]))
+                self.llmResponsed = False
+                
+            elif result and result.result_content_type == ResultContentType.LLM_RESULT:
+                if self.debugMode:
+                    logger.info(f"[TokenCalculator] 非流式模式 (LLM_RESULT)，将 Token 信息追加到 chain 末尾。")
                 chain = result.chain
-                chain.append(Plain(self.tokenMsg))  # 在消息链的最后加上Token计算信息
-                self.llmResponsed=False
-            except Exception as e:
-                logger.error(f"[TokenCalculator] Error in on_decorating_result: {e}")
-                raise RuntimeError("CacuToken插件在回复消息的时候出现错误")
+                chain.append(Plain(self.tokenMsg))
+                self.llmResponsed = False
+                
+        except Exception as e:
+            logger.error(f"[TokenCalculator] Error in on_decorating_result: {e}")
+            raise RuntimeError("CacuToken插件在回复消息的时候出现错误")
