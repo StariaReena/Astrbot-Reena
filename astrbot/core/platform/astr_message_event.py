@@ -246,6 +246,8 @@ class AstrMessageEvent(abc.ABC):
         while buffer:
             match = re.search(pattern, buffer)
             if not match:
+                segments.append(buffer)
+                buffer = ""
                 break
             
             # 1. 稳定性：防止 match 为空字符串造成的无限循环
@@ -259,8 +261,8 @@ class AstrMessageEvent(abc.ABC):
             segments.append(matched_text)
             buffer = buffer[match.end() :]
             
-        # 2. 如果分段数大于等于4，则进入合并分段的循环
-        while len(segments) >= 4:
+        # 2. 如果分段数大于等于3，则进入合并分段的循环
+        while len(segments) >= 3:
             min_length = float('inf')
             best_pair_idx = -1
             
@@ -271,7 +273,7 @@ class AstrMessageEvent(abc.ABC):
                 # 合并条件：A和B相邻，且上面分段尾部和下面分段头部没有换行符
                 if not seg_a.endswith('\n') and not seg_b.startswith('\n'):
                     combined_len = len(seg_a) + len(seg_b)
-                    if combined_len < min_length:
+                    if combined_len <= 100 and combined_len < min_length:
                         min_length = combined_len
                         best_pair_idx = i
                         
@@ -280,8 +282,8 @@ class AstrMessageEvent(abc.ABC):
                 segments[best_pair_idx] = segments[best_pair_idx] + segments[best_pair_idx+1]
                 del segments[best_pair_idx+1]
                 
-                # 直到总分段数小于等于4
-                if len(segments) <= 4:
+                # 直到总分段数小于等于3
+                if len(segments) <= 3:
                     break
             else:
                 # 没有可以合并的分段
