@@ -204,6 +204,12 @@ class AiocqhttpMessageEvent(AstrMessageEvent):
 
         async for chain in generator:
             if isinstance(chain, MessageChain):
+                if chain.type == "break":
+                    if buffer.strip():
+                        await self.process_buffer(buffer, pattern)
+                        buffer = ""
+                    continue
+                
                 for comp in chain.chain:
                     if isinstance(comp, Plain):
                         buffer += comp.text
